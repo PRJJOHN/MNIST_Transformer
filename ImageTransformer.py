@@ -3,6 +3,7 @@ import torch.nn as nn
 import copy
 import torch.nn.functional as F
 import numpy as np
+N_DIV = 4
 def clones(module: nn.Module, 
            N: int) -> nn.ModuleList:
     return nn.ModuleList([copy.deepcopy(module) 
@@ -97,13 +98,13 @@ class ImageTransformer(nn.Module):
                  nfeatures, nclasses, nheads, dropout):
         super().__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(in_channels, nfeatures, kernel_size=5, padding=2,stride = 2),
+            nn.Conv2d(in_channels, nfeatures, kernel_size=N_DIV*2+1, padding=N_DIV,stride = N_DIV),
             nn.ReLU()
         )
         attn = MultiHeadedAttention(h=nheads, d_model=nfeatures, dropout=dropout)
         ff = PositionwiseFeedForward(nfeatures, d_ff=2*nfeatures, dropout=dropout)
         self.attn = Encoder(EncoderLayer(nfeatures, attn, ff, dropout), 1)
-        self.cls = nn.Linear(196, nclasses)
+        self.cls = nn.Linear(int(28/N_DIV)*int(28/N_DIV), nclasses)
         #self.cls = nn.Linear(nfeatures, nclasses)
         self.sparse_trans = nn.Linear(size[0], nfeatures)
         self.nfeatures = nfeatures

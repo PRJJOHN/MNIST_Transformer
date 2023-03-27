@@ -3,7 +3,7 @@ import torch.nn as nn
 import copy
 import torch.nn.functional as F
 import numpy as np
-N_DIV = 2
+N_DIV = 1
 def clones(module: nn.Module, 
            N: int) -> nn.ModuleList:
     return nn.ModuleList([copy.deepcopy(module) 
@@ -97,14 +97,30 @@ class ImageTransformer(nn.Module):
     def __init__(self, in_channels, size,
                  nfeatures, nclasses, nheads, dropout):
         super().__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_channels, nfeatures, kernel_size=N_DIV*2+1, padding=N_DIV,stride = N_DIV),
+        self.b_conv = nn.Sequential(
+            nn.Conv2d(in_channels, 15, kernel_size=3, padding=1,stride = 1),
+            nn.ReLU()
+        )
+        self.s_conv = nn.Sequential(
+            nn.Conv2d(15, 30, kernel_size=3, padding=1,stride = 2),
+            nn.ReLU()
+        )
+        self.t_conv = nn.Sequential(
+            nn.Conv2d(30, 45, kernel_size=3, padding=1,stride = 2),
+            nn.ReLU()
+        )
+        self.f_conv = nn.Sequential(
+            nn.Conv2d(45, 60, kernel_size=3, padding=1,stride = 2),
+            nn.ReLU()
+        )
+        self.ff_conv = nn.Sequential(
+            nn.Conv2d(60, nfeatures, kernel_size=3, padding=1,stride = 2),
             nn.ReLU()
         )
         attn = MultiHeadedAttention(h=nheads, d_model=nfeatures, dropout=dropout)
         ff = PositionwiseFeedForward(nfeatures, d_ff=2*nfeatures, dropout=dropout)
         self.attn = Encoder(EncoderLayer(nfeatures, attn, ff, dropout), 1)
-        self.cls = nn.Linear(int(28/N_DIV)*int(28/N_DIV), nclasses)
+        self.cls = nn.Linear(4, nclasses)
         #self.cls = nn.Linear(nfeatures, nclasses)
         self.sparse_trans = nn.Linear(size[0], nfeatures)
         self.nfeatures = nfeatures
@@ -119,7 +135,11 @@ class ImageTransformer(nn.Module):
                 nn.init.xavier_uniform_(p)
 
     def forward(self, x):
-        x = self.conv(x)
+        x = self.b_conv(x)
+        x = self.s_conv(x)
+        x = self.t_conv(x)
+        x = self.f_conv(x)
+        x = self.ff_conv(x)
         x = x.reshape(x.size(0), self.nfeatures, -1).permute(0, 2, 1)
         #x = x.view(-1, 28, 28)
         #x = self.sparse_trans(x)

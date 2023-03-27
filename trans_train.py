@@ -21,7 +21,7 @@ def main():
     trainset = torchvision.datasets.MNIST(root='./data', train=True, download=True, transform=transform)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = ImageTransformer(in_channels=1, size=(28, 28), nfeatures=56, nclasses=10, nheads=1, dropout=0.0).to(device)
+    model = ImageTransformer(in_channels=1, size=(28, 28), nfeatures=75, nclasses=10, nheads=1, dropout=0.0).to(device)
     criterion = nn.CrossEntropyLoss()
     #criterion = nn.KLDivLoss(size_average=False)
     criterion = criterion.cuda()

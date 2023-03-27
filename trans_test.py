@@ -4,7 +4,7 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 N_EPHOCS = 30
 BATCH_SIZE = 128
-N_DIV = 4
+N_DIV = 1
 def get_accuracy(logit, target, batch_size):
     ''' Obtain accuracy for training round '''
     corrects = (torch.max(logit, 1)[1].view(target.size()).data == target.data).sum()
@@ -23,12 +23,12 @@ def main():
         outputs = model(inputs)
         # plt.imshow(inputs[0][0])
         # plt.show()
-        # print(torch.max(outputs, 1)[1][0])
-        # print(labels[0])
-        # for id in range(int(28/N_DIV)*int(28/N_DIV)):
-        #     plt.subplot(int(28/N_DIV),int(28/N_DIV),id+1)
-        #     plt.imshow(model.attn.layers[0].self_attn.attn[0][0][id].detach().numpy().reshape(int(28/N_DIV),int(28/N_DIV)))
-        # plt.show()
+        print(torch.max(outputs, 1)[1][0])
+        print(labels[0])
+        for id in range(196):
+            plt.subplot(14,14,id+1)
+            plt.imshow(model.attn.layers[0].self_attn.attn[0][0][id].detach().numpy().reshape(14,14))
+        plt.show()
         test_acc += get_accuracy(outputs, labels, BATCH_SIZE)
             
     print('Test Accuracy: %.2f'%( test_acc/i))

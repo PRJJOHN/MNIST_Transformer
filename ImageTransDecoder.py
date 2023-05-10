@@ -32,9 +32,6 @@ class MultiHeadedAttention(nn.Module):
 
     def attention(self, query, key, value, mask=None, dropout=None):
         scores = self.get_score(query, key)
-        if mask is None:
-            attn_shape = (1, scores.shape[1], scores.shape[2])
-            mask = np.tril(np.ones(attn_shape), k=1).astype('uint8')
         if mask is not None:
             scores = scores.masked_fill(mask == 0, -np.inf)
         p_attn = F.softmax(scores, dim=-1)
@@ -97,19 +94,16 @@ class PositionwiseFeedForward(nn.Module):
     def forward(self, x):
         return self.w2(self.dropout(F.relu(self.w1(x))))
 class ImageTransformer(nn.Module):
-    def __init__(self, in_channels, size,
+    def __init__(self, size,
                  nfeatures, nclasses, nheads, dropout):
         super().__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_channels, nfeatures, kernel_size=N_DIV*2+1, padding=N_DIV,stride = N_DIV),
-            nn.ReLU()
-        )
         attn = MultiHeadedAttention(h=nheads, d_model=nfeatures, dropout=dropout)
         ff = PositionwiseFeedForward(nfeatures, d_ff=2*nfeatures, dropout=dropout)
         self.attn = Encoder(EncoderLayer(nfeatures, attn, ff, dropout), 1)
-        self.cls = nn.Linear(int(28/N_DIV)*int(28/N_DIV), nclasses)
-        #self.cls = nn.Linear(nfeatures, nclasses)
+        # self.cls = nn.Linear(int(28/N_DIV)*int(28/N_DIV), nclasses)
+        self.cls = nn.Linear(nfeatures, size[0])
         self.sparse_trans = nn.Linear(size[0], nfeatures)
+        self.sigmoid = nn.Sigmoid()
         self.nfeatures = nfeatures
 
         # self.init_(self.conv)
@@ -122,13 +116,15 @@ class ImageTransformer(nn.Module):
                 nn.init.xavier_uniform_(p)
 
     def forward(self, x):
-        x = self.conv(x)
-        x = x.reshape(x.size(0), self.nfeatures, -1).permute(0, 2, 1)
-        #x = x.view(-1, 28, 28)
-        #x = self.sparse_trans(x)
+        # x = self.conv(x)
+        # x = x.reshape(x.size(0), self.nfeatures, -1).permute(0, 2, 1)
+        x = x.view(-1, 28, 28)
+        x = self.sparse_trans(x)
         x = self.attn(x, None)
+        x = self.cls(x)
+
         #nail = x[:,-1,:]        
         #x = self.cls(nail)
-        x = torch.mean(x, dim=-1)
-        x = self.cls(x)
-        return x
+        # x = torch.mean(x, dim=-1)
+        out = self.sigmoid(x)
+        return out

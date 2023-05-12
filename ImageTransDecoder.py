@@ -99,17 +99,24 @@ class ImageTransformer(nn.Module):
         super().__init__()
         attn = MultiHeadedAttention(h=nheads, d_model=nfeatures, dropout=dropout)
         ff = PositionwiseFeedForward(nfeatures, d_ff=2*nfeatures, dropout=dropout)
-        self.attn = Encoder(EncoderLayer(nfeatures, attn, ff, dropout), 1)
-        # self.cls = nn.Linear(int(28/N_DIV)*int(28/N_DIV), nclasses)
-        self.cls = nn.Linear(nfeatures, size[0])
+        self.attn = Encoder(EncoderLayer(nfeatures, attn, ff, dropout), 2)
         self.sparse_trans = nn.Linear(size[0], nfeatures)
+        self.cls = nn.Linear(nfeatures, size[0])
+        attn2 = MultiHeadedAttention(h=nheads, d_model=nfeatures, dropout=dropout)
+        ff2= PositionwiseFeedForward(nfeatures, d_ff=2*nfeatures, dropout=dropout)
+        self.attn2 = Encoder(EncoderLayer(nfeatures, attn2, ff2, dropout), 2)
+        self.sparse_trans2 = nn.Linear(size[0], nfeatures)
+        self.cls2 = nn.Linear(nfeatures, size[0])
         self.sigmoid = nn.Sigmoid()
         self.nfeatures = nfeatures
 
         # self.init_(self.conv)
         self.init_(self.attn)
-        # self.init_(self.cls)
-
+        self.init_(self.sparse_trans)
+        self.init_(self.cls)
+        self.init_(self.attn2)
+        self.init_(self.sparse_trans2)
+        self.init_(self.cls2)
     def init_(self, module):
         for p in module.parameters():
             if p.dim() > 1:
@@ -119,12 +126,21 @@ class ImageTransformer(nn.Module):
         # x = self.conv(x)
         # x = x.reshape(x.size(0), self.nfeatures, -1).permute(0, 2, 1)
         x = x.view(-1, 28, 28)
+        x2 = x.transpose(1,2)
         x = self.sparse_trans(x)
-        x = self.attn(x, None)
+        x2 = self.sparse_trans2(x2)
+        if x.is_cuda:
+            mask = torch.ones_like(torch.ones(28,28)).fill_diagonal_(0).cuda()
+        else:
+            mask = torch.ones_like(torch.ones(28,28)).fill_diagonal_(0)
+        mask.unsqueeze_(0)
+        x = self.attn(x, mask)
+        x2 = self.attn2(x2, mask)
         x = self.cls(x)
-
+        x2 = self.cls2(x2)
+        x2 = x2.transpose(1,2)
         #nail = x[:,-1,:]        
         #x = self.cls(nail)
         # x = torch.mean(x, dim=-1)
-        out = self.sigmoid(x)
+        out = self.sigmoid(x+x2)
         return out

@@ -16,7 +16,7 @@ for i in range(10):
     tensor = transforms.ToTensor()(image)
     img_stack = torch.cat((img_stack, tensor),dim = 0)
 img_stack = img_stack.cuda()
-N_EPHOCS = 500
+N_EPHOCS = 1000
 BATCH_SIZE = 128
 
 
